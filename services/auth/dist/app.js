@@ -1,7 +1,9 @@
 import express from "express";
 import authRoutes from "./routes/auth.js";
+import { connectKafka } from "./producer.js";
 const app = express();
 app.use(express.json());
+connectKafka();
 // Root route
 app.get("/", (req, res) => {
     res.json({

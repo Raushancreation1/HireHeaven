@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 import routes from "./routes.js";
 import cors from 'cors';
 import { v2 as cloudinary } from "cloudinary";
+import { startSendMailConsumer } from "./consumer.js";
 dotenv.config();
+startSendMailConsumer();
 cloudinary.config({
     cloud_name: process.env.CLOUD_NAME,
     api_key: process.env.API_KEY,
@@ -14,32 +16,32 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Root route
-app.get("/", (req, res) => {
-    res.json({
-        message: "Utils Service API",
-        version: "1.0.0",
-        endpoints: {
-            upload: "POST /api/utils/upload"
-        }
-    });
-});
+// app.get("/", (req, res) => {
+//     res.json({
+//         message: "Utils Service API",
+//         version: "1.0.0",
+//         endpoints: {
+//             upload: "POST /api/utils/upload"
+//         }
+//     });
+// });
 // Health check endpoint
-app.get("/health", (req, res) => {
-    res.json({
-        status: "ok",
-        service: "utils",
-        timestamp: new Date().toISOString()
-    });
-});
+// app.get("/health", (req, res) => {
+//     res.json({
+//         status: "ok",
+//         service: "utils",
+//         timestamp: new Date().toISOString()
+//     });
+// });
 app.use("/api/utils", routes);
 // 404 handler for unmatched routes
-app.use((req, res) => {
-    res.status(404).json({
-        message: "Route not found",
-        path: req.path,
-        method: req.method
-    });
-});
+// app.use((req, res) => {
+//     res.status(404).json({
+//         message: "Route not found",
+//         path: req.path,
+//         method: req.method
+//     });
+// });
 app.listen(process.env.PORT, () => {
     console.log(`Utils Service is running on http://localhost:${process.env.PORT}`);
 });
