@@ -52,7 +52,9 @@ async function initDb() {
     }
     catch (error) {
         console.log("❌ Error initializing database ", error);
-        process.exit(1);
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
     }
 }
 initDb().then(() => {

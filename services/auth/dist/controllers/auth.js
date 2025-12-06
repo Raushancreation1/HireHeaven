@@ -133,22 +133,28 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
 export const resetPassword = TryCatch(async (req, res, next) => {
     const { token } = req.params;
     const { password } = req.body;
+    if (!password) {
+        throw new ErrorHandler(400, "Password is required");
+    }
+    if (password.length < 6) {
+        throw new ErrorHandler(400, "Password must be at least 6 characters long");
+    }
     let decoded;
     try {
         decoded = jwt.verify(token, process.env.JWT_SEC);
     }
     catch (error) {
-        throw new ErrorHandler(400, "Expired token");
+        throw new ErrorHandler(400, "Expired or invalid token");
     }
     if (decoded.type !== "reset") {
         throw new ErrorHandler(400, "Invalid token type");
     }
     const email = decoded.email;
-    const stroreToken = await redisClient.get(`forgot:${email}`);
-    if (!stroreToken || stroreToken !== token) {
-        throw new ErrorHandler(400, "token has been expired");
+    const storedToken = await redisClient.get(`forgot:${email}`);
+    if (!storedToken || storedToken !== token) {
+        throw new ErrorHandler(400, "Token has expired or is invalid");
     }
-    const users = await sql `SELECT user_id FROM user WHERE email = ${email}`;
+    const users = await sql `SELECT user_id FROM users WHERE email = ${email}`;
     if (users.length === 0) {
         throw new ErrorHandler(404, "User not found");
     }
