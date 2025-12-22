@@ -1,9 +1,14 @@
 import express from "express";
 import authRoutes from "./routes/auth.js";
 import { connectKafka } from "./producer.js";
+import ErrorHandler from "./utils/ErrorHandler.js";
 const app = express();
 app.use(express.json());
-connectKafka();
+// Connect to Kafka with error handling (async, but don't block app startup)
+connectKafka().catch((error) => {
+    console.error("❌ Failed to connect to Kafka:", error);
+    // Don't exit - allow app to run without Kafka if needed
+});
 // Root route
 app.get("/", (req, res) => {
     res.json({
@@ -29,6 +34,32 @@ app.use((req, res) => {
         message: "Route not found",
         path: req.path,
         method: req.method
+    });
+});
+// Global error handler middleware (must be last)
+app.use((err, req, res, next) => {
+    // Handle JSON parsing errors
+    if (err instanceof SyntaxError && "body" in err) {
+        return res.status(400).json({
+            message: "Invalid JSON payload",
+            success: false
+        });
+    }
+    // Handle custom ErrorHandler instances
+    if (err instanceof ErrorHandler) {
+        return res.status(err.statusCode).json({
+            message: err.message,
+            success: false
+        });
+    }
+    // Handle other errors
+    console.error("Global error handler:", err);
+    const errorMessage = err?.message || err?.toString() || "Internal server error";
+    res.status(err?.statusCode || 500).json({
+        message: process.env.NODE_ENV === 'production'
+            ? "Internal server error"
+            : errorMessage,
+        success: false
     });
 });
 export default app;

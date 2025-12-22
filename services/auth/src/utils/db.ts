@@ -1,5 +1,5 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
 import dotenv from "dotenv";
+import { Pool } from "pg";
 
 dotenv.config();
 
@@ -14,9 +14,35 @@ if (!connectionString) {
   );
 }
 
-// Keep the driver from hanging indefinitely when the network is unreachable.
-// Values are intentionally modest to surface misconfiguration early.
-neonConfig.fetchTimeout = Number(process.env.DB_FETCH_TIMEOUT_MS ?? 10000);
-neonConfig.poolQueryTimeout = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 10000);
+// pg uses TCP, which works for both local Postgres and Neon; ssl off for local, lax for cloud
+const pool = new Pool({
+  connectionString,
+  ssl:
+    connectionString.includes("localhost") ||
+    connectionString.includes("127.0.0.1")
+      ? false
+      : { rejectUnauthorized: false },
+  connectionTimeoutMillis: 5000,
+});
 
-export const sql = neon(connectionString);
+/**
+ * Template-tag helper to mirror neon's sql`` API using pg under the hood.
+ * Converts interpolated values into parameterized queries to avoid SQL injection.
+ */
+export async function sql(
+  strings: TemplateStringsArray,
+  ...values: any[]
+): Promise<any[]> {
+  const text = strings.reduce(
+    (acc, str, i) => acc + str + (i < values.length ? `$${i + 1}` : ""),
+    ""
+  );
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, values);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}

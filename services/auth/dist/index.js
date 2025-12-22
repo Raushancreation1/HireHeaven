@@ -8,8 +8,11 @@ export const redisClient = createClient({
 });
 redisClient
     .connect()
-    .then(() => console.log("connected to redis"))
-    .catch(console.log);
+    .then(() => console.log("✅ connected to redis"))
+    .catch((error) => {
+    console.error("❌ Redis connection error:", error.message);
+    // Don't exit - allow app to run without Redis if needed
+});
 async function initDb() {
     try {
         await sql `
@@ -51,14 +54,56 @@ async function initDb() {
         console.log("✔️ Database tables chechked/created successfully");
     }
     catch (error) {
-        console.log("❌ Error initializing database ", error);
+        console.error("❌ Error initializing database:", error);
+        // In production, rethrow to be caught by the outer catch
         if (process.env.NODE_ENV === 'production') {
-            process.exit(1);
+            throw error;
         }
+        // In development, log but continue (database might be unavailable)
+        console.warn("⚠️  Continuing in development mode despite database error");
     }
 }
-initDb().then(() => {
-    app.listen(process.env.PORT, () => {
-        console.log(`Auth service is running on https://localhost:${process.env.PORT}`);
+initDb()
+    .then(() => {
+    const port = Number(process.env.PORT) || 5000;
+    if (isNaN(port) || port <= 0) {
+        console.error("❌ Invalid PORT environment variable:", process.env.PORT);
+        process.exit(1);
+    }
+    const server = app.listen(port, () => {
+        console.log(`✅ Auth service is running on http://localhost:${port}`);
     });
+    // Handle server errors
+    server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+            console.error(`❌ Port ${port} is already in use`);
+        }
+        else {
+            console.error("❌ Server error:", error);
+        }
+        process.exit(1);
+    });
+})
+    .catch((error) => {
+    console.error("❌ Failed to initialize application:", error);
+    // In development, log the error but don't exit to allow debugging
+    if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+    }
+    else {
+        console.error("⚠️  Continuing in development mode despite initialization error");
+    }
+});
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit in development to allow debugging
+    if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+    }
+});
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    process.exit(1);
 });

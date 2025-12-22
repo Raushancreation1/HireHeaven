@@ -24,16 +24,52 @@ export interface AuthenticatedRequest extends Request{
 export const isAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction):
     Promise<void> => {
     try {
-        const authHeader = req.headers.authorization;
+        // Accept different header casings and array form
+        const authHeaderRaw =
+            req.headers.authorization ||
+            (req.headers as any)["Authorization"] ||
+            (req.headers as any)["AUTHORIZATION"];
 
-        if (!authHeader || !authHeader.startsWith("Bearer")) {
+        const authHeader = Array.isArray(authHeaderRaw)
+            ? authHeaderRaw[0]
+            : authHeaderRaw;
+
+        // Validate header presence
+        if (!authHeader || typeof authHeader !== "string") {
             res.status(401).json({
                 message: "Authorization header is missing or invalid",
             });
             return;
         }
 
-        const token = authHeader.split(" ")[1]
+        const normalized = authHeader.trim();
+
+        // Validate Bearer format (case-insensitive)
+        if (!normalized.toLowerCase().startsWith("bearer ")) {
+            res.status(401).json({
+                message: "Authorization header is missing or invalid",
+            });
+            return;
+        }
+
+        // Extract token part
+        const token = normalized.split(" ").slice(1).join(" ").trim();
+
+        if (!token) {
+            res.status(401).json({
+                message: "Authorization header is missing or invalid",
+            });
+            return;
+        }
+
+        // Check if JWT secret is configured
+        if (!process.env.JWT_SEC) {
+            console.error("JWT_SEC environment variable is not set");
+            res.status(500).json({
+                message: "Server configuration error",
+            });
+            return;
+        }
 
         const decodedPayload = jwt.verify(
             token,
@@ -81,9 +117,25 @@ export const isAuth = async (req: AuthenticatedRequest, res: Response, next: Nex
 
         next();
     } catch (error) {
-        console.log(error);
+        console.error("Authentication error:", error);
+        
+        // Handle specific JWT errors
+        if (error instanceof jwt.JsonWebTokenError) {
+            res.status(401).json({
+                message: "Invalid token. Please login again",
+            });
+            return;
+        }
+        
+        if (error instanceof jwt.TokenExpiredError) {
+            res.status(401).json({
+                message: "Token expired. Please login again",
+            });
+            return;
+        }
+
         res.status(401).json({
             message: "Authentication Failed. Please login again"
-        })
+        });
     }
 }

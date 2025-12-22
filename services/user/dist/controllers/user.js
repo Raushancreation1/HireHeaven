@@ -1,6 +1,8 @@
 import { TryCatch } from "../utils/TryCatch.js";
 import { sql } from "../utils/db.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
+import getBuffer from "../utils/buffer.js";
+import axios from "axios";
 export const myProfile = TryCatch(async (req, res, next) => {
     const user = req.user;
     res.json(user);
@@ -47,6 +49,32 @@ export const updateUserProfile = TryCatch(async (req, res) => {
     `;
     res.json({
         message: "Profile Update successfully",
+        updatedUser,
+    });
+});
+export const updateProfilePic = TryCatch(async (req, res) => {
+    const user = req.user;
+    if (!user) {
+        throw new ErrorHandler(401, "Authentication required");
+    }
+    const file = req.file;
+    if (!file) {
+        throw new ErrorHandler(400, "No image file provided");
+    }
+    const oldPublicId = user.profile_pic_public_id;
+    const fileBuffer = getBuffer(file);
+    if (!fileBuffer || !fileBuffer.content) {
+        throw new ErrorHandler(500, "failed to generate buffer");
+    }
+    const { data: uploadResult } = await axios.post(`${process.env.UPLOAD_SERVICE}/api/utils/upload`, {
+        buffer: fileBuffer.content,
+        public_id: oldPublicId,
+    });
+    const [updatedUser] = await sql `
+    UPDATE user SET profile_pic = ${uploadResult.url}, profile_pic_public_key = ${uploadResult.public_id} WHERE user_id = ${user.user_id} RETURNING user_id, name, profile_pic;
+`;
+    res.json({
+        message: "profile pic updated",
         updatedUser,
     });
 });
