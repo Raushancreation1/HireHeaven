@@ -6,8 +6,8 @@ const app = express();
 app.use(express.json());
 // Connect to Kafka with error handling (async, but don't block app startup)
 connectKafka().catch((error) => {
-    console.error("❌ Failed to connect to Kafka:", error);
-    // Don't exit - allow app to run without Kafka if needed
+    // Error is already logged in connectKafka, just ensure app continues
+    // App will work without Kafka, but email features won't be available
 });
 // Root route
 app.get("/", (req, res) => {

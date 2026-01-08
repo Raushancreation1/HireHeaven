@@ -8,6 +8,7 @@ const app = express();
 app.use(cors({
     origin: true, // Allow all origins (change in production)
     credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Access-Token'],
     exposedHeaders: ['Authorization']
 }));
 // Parse JSON bodies and surface malformed JSON nicely

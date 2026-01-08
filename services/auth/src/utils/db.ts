@@ -22,7 +22,9 @@ const pool = new Pool({
     connectionString.includes("127.0.0.1")
       ? false
       : { rejectUnauthorized: false },
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000, // Increased to 10 seconds
+  idleTimeoutMillis: 30000,
+  max: 20, // Maximum number of clients in the pool
 });
 
 /**

@@ -14,11 +14,17 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString,
   ssl:
-    connectionString.includes("localhost") ||
-    connectionString.includes("127.0.0.1")
-      ? false
-      : { rejectUnauthorized: false },
-  connectionTimeoutMillis: 5000,
+    (() => {
+      const sslEnv = String(process.env.DB_SSL || process.env.PGSSLMODE || "").toLowerCase();
+      if (sslEnv === "require" || sslEnv === "true") return { rejectUnauthorized: false };
+      if (sslEnv === "disable" || sslEnv === "false") return false;
+      return connectionString.includes("localhost") ||
+             connectionString.includes("127.0.0.1")
+        ? false
+        : { rejectUnauthorized: false };
+    })(),
+  connectionTimeoutMillis: 10000,
+  keepAlive: true,
 });
 
 export async function sql(

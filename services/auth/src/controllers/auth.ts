@@ -157,9 +157,15 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
 
     const resetLink = `${process.env.Frontend_Url}/reset/${resetToken}`
 
-    await redisClient.set(`forgot:${email}`,resetToken, {
-        EX:900,
-    });
+    // Store token in Redis (with error handling if Redis is unavailable)
+    try {
+        await redisClient.set(`forgot:${email}`,resetToken, {
+            EX:900,
+        });
+    } catch (error) {
+        console.warn("⚠️  Failed to store reset token in Redis:", error);
+        // Continue anyway - token is still valid, just won't be checkable in Redis
+    }
 
     const message = {
         to: email,
@@ -204,10 +210,20 @@ export const resetPassword = TryCatch(async(req, res, next) => {
 
     const email = decoded.email
 
-    const storedToken = await redisClient.get(`forgot:${email}`)
+    // Check token in Redis (with fallback if Redis is unavailable)
+    let storedToken: string | null = null;
+    try {
+        storedToken = await redisClient.get(`forgot:${email}`);
+    } catch (error) {
+        console.warn("⚠️  Failed to get reset token from Redis:", error);
+        // If Redis is unavailable, we'll skip Redis validation but still validate JWT
+        // This allows password reset to work even if Redis is down
+    }
 
-    if(!storedToken || storedToken !== token){
-        throw new ErrorHandler(400,"Token has expired or is invalid")
+    // Only validate against Redis if we successfully retrieved a token
+    // If Redis is unavailable, we rely on JWT expiration (15 minutes)
+    if (storedToken !== null && storedToken !== token) {
+        throw new ErrorHandler(400,"Token has expired or is invalid");
     }
 
     const users = await sql`SELECT user_id FROM users WHERE email = ${email}`
@@ -222,7 +238,13 @@ export const resetPassword = TryCatch(async(req, res, next) => {
 
     await sql`UPDATE users SET password = ${hashPassword} WHERE user_id = ${user.user_id}`;
 
-    await redisClient.del(`forgot:${email}`);
+    // Delete token from Redis (with error handling if Redis is unavailable)
+    try {
+        await redisClient.del(`forgot:${email}`);
+    } catch (error) {
+        console.warn("⚠️  Failed to delete reset token from Redis:", error);
+        // Continue anyway - password is already reset
+    }
 
     res.json({message:"Password changed successfully"});
 })

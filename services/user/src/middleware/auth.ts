@@ -35,25 +35,45 @@ export const isAuth = async (req: AuthenticatedRequest, res: Response, next: Nex
             : authHeaderRaw;
 
         // Validate header presence
-        if (!authHeader || typeof authHeader !== "string") {
-            res.status(401).json({
-                message: "Authorization header is missing or invalid",
-            });
-            return;
+        let token: string | undefined;
+        if (authHeader && typeof authHeader === "string") {
+            const normalized = authHeader.trim();
+
+            // Validate Bearer format (case-insensitive)
+            if (normalized.toLowerCase().startsWith("bearer ")) {
+                // Extract token part
+                token = normalized.split(" ").slice(1).join(" ").trim();
+            } else if (normalized.split('.').length === 3) {
+                token = normalized;
+            }
         }
 
-        const normalized = authHeader.trim();
-
-        // Validate Bearer format (case-insensitive)
-        if (!normalized.toLowerCase().startsWith("bearer ")) {
-            res.status(401).json({
-                message: "Authorization header is missing or invalid",
-            });
-            return;
+        if (!token) {
+            const xAccess = (req.headers as any)["x-access-token"] || (req.headers as any)["X-Access-Token"];
+            if (typeof xAccess === "string" && xAccess.trim()) {
+                token = xAccess.trim();
+            }
         }
 
-        // Extract token part
-        const token = normalized.split(" ").slice(1).join(" ").trim();
+        if (!token) {
+            const q: any = (req as any).query || {};
+            const qToken = q.token || q.access_token;
+            if (typeof qToken === "string" && qToken.trim()) {
+                token = qToken.trim();
+            }
+        }
+
+        if (!token) {
+            const cookieHeader = req.headers.cookie as string | undefined;
+            if (cookieHeader && typeof cookieHeader === "string") {
+                const parts = cookieHeader.split(";").map((s) => s.trim());
+                const getCookie = (name: string) => {
+                    const p = parts.find((x) => x.startsWith(name + "="));
+                    return p ? decodeURIComponent(p.substring(name.length + 1)) : undefined;
+                };
+                token = getCookie("token") || getCookie("Authorization") || getCookie("auth_token");
+            }
+        }
 
         if (!token) {
             res.status(401).json({
@@ -130,6 +150,22 @@ export const isAuth = async (req: AuthenticatedRequest, res: Response, next: Nex
         if (error instanceof jwt.TokenExpiredError) {
             res.status(401).json({
                 message: "Token expired. Please login again",
+            });
+            return;
+        }
+
+        const msg = String((error as any)?.message || "").toLowerCase();
+        const code = String((error as any)?.code || "").toUpperCase();
+        if (
+            msg.includes("timeout") ||
+            msg.includes("connection terminated") ||
+            code === "ECONNRESET" ||
+            code === "ETIMEDOUT" ||
+            code === "ECONNREFUSED" ||
+            code === "ENETUNREACH"
+        ) {
+            res.status(503).json({
+                message: "Authentication temporarily unavailable. Please try again later.",
             });
             return;
         }

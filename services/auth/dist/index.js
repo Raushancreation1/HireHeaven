@@ -5,13 +5,25 @@ import { createClient } from 'redis';
 dotenv.config();
 export const redisClient = createClient({
     url: process.env.Redis_url,
+    socket: {
+        connectTimeout: 10000, // 10 seconds
+        reconnectStrategy: (retries) => {
+            if (retries > 10) {
+                console.warn("⚠️  Redis reconnection attempts exceeded. Continuing without Redis.");
+                return false; // Stop trying to reconnect
+            }
+            return Math.min(retries * 100, 3000); // Exponential backoff, max 3 seconds
+        }
+    }
 });
-redisClient
-    .connect()
-    .then(() => console.log("✅ connected to redis"))
-    .catch((error) => {
-    console.error("❌ Redis connection error:", error.message);
-    // Don't exit - allow app to run without Redis if needed
+// Connect Redis with timeout
+Promise.race([
+    redisClient.connect().then(() => console.log("✅ connected to redis")),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Redis connection timeout")), 10000))
+]).catch((error) => {
+    console.warn("⚠️  Redis connection failed:", error.message || error);
+    console.warn("⚠️  App will continue without Redis. Some features may be limited.");
+    // Don't exit - allow app to run without Redis
 });
 async function initDb() {
     try {
