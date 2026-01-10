@@ -19,13 +19,21 @@ export const registerUser = TryCatch(async (req, res, next) => {
     }
     const hashPassword = await bcrypt.hash(password, 10);
     let registeredUser;
-    if (role === "recruiter ") {
-        const [user] = await sql `INSERT INTO users (name, email, password, phone_number, role) VALUES
-                                 (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}) RETURNING
-                                 user_id, name, email, phone_number, role, created_at`;
+    // Normalize and validate role (trim whitespace)
+    const normalizedRole = role.trim().toLowerCase();
+    // Validate role
+    if (normalizedRole !== "recruiter" && normalizedRole !== "jobseeker") {
+        throw new ErrorHandler(400, "Invalid role. Must be 'recruiter' or 'jobseeker'");
+    }
+    if (normalizedRole === "recruiter") {
+        const [user] = await sql `
+            INSERT INTO users (name, email, password, phone_number, role) 
+            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${normalizedRole}) 
+            RETURNING user_id, name, email, phone_number, role, created_at
+        `;
         registeredUser = user;
     }
-    else if (role === "jobseeker") {
+    else if (normalizedRole === "jobseeker") {
         const file = req.file;
         if (!file) {
             throw new ErrorHandler(400, "Resume file is required for jobseekers ");
@@ -62,10 +70,18 @@ export const registerUser = TryCatch(async (req, res, next) => {
             }
             throw new ErrorHandler(500, `Failed to upload file: ${err?.message || 'Unknown error'}`);
         }
-        const [user] = await sql `INSERT INTO users (name, email, password, phone_number, role, bio, resume, resume_public_id ) VALUES
-                                 (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}, ${bio}, ${data.url}, ${data.public_id}) RETURNING
-                                 user_id, name, email, phone_number, role, bio, resume, created_at`;
+        const [user] = await sql `
+            INSERT INTO users (name, email, password, phone_number, role, bio, resume, resume_public_id) 
+            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${normalizedRole}, ${bio || null}, ${data.url}, ${data.public_id}) 
+            RETURNING user_id, name, email, phone_number, role, bio, resume, created_at
+        `;
         registeredUser = user;
+    }
+    else {
+        throw new ErrorHandler(400, "Invalid role. Must be 'recruiter' or 'jobseeker'");
+    }
+    if (!registeredUser) {
+        throw new ErrorHandler(500, "Failed to register user");
     }
     res.json({
         message: "user Registerd ",

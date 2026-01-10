@@ -119,7 +119,7 @@ export const addSkillToUser = TryCatch(async (req, res) => {
         }
         const [skill] = await sql `INSERT INTO skills (name) VALUES (${skillName.trim()}) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING skill_id`;
         const skillId = skill.skill_id;
-        const insertionResult = await sql `INSERT INTO user_skills (user_id, skill_id) VALUES (${userId}, ${skillId}) NO CONFLICT (user_id, skill_id) DO NOTHING RETURNING user_id`;
+        const insertionResult = await sql `INSERT INTO user_skills (user_id, skill_id) VALUES (${userId}, ${skillId}) ON CONFLICT (user_id, skill_id) DO NOTHING RETURNING user_id`;
         if (insertionResult.length > 0) {
             wasSkillAdded = true;
         }
@@ -147,9 +147,9 @@ export const deleteSkillFromUser = TryCatch(async (req, res) => {
     if (!skillName || skillName.trim() === "") {
         throw new ErrorHandler(400, "Please provide a skill name");
     }
-    const result = await `DELETE FROM user_skills WHERE user_id = ${user.user_id} AND skill_id = (SELECT skill_id FROM skills WHERE name = ${skillName.trim()}) RETURNING user_id`;
+    const result = await sql `DELETE FROM user_skills WHERE user_id = ${user.user_id} AND skill_id = (SELECT skill_id FROM skills WHERE name = ${skillName.trim()}) RETURNING user_id`;
     if (result.length === 0) {
-        throw new ErrorHandler(404, `Skill ${skillName.trim()}was not found`);
+        throw new ErrorHandler(404, `Skill ${skillName.trim()} was not found`);
     }
     res.json({
         message: `Skill ${skillName.trim()} was deleted successfully`,

@@ -1,5 +1,5 @@
 {
-  "name": "user",
+  "name": "job",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -13,20 +13,9 @@
   "author": "",
   "license": "ISC",
   "description": "",
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/dotenv": "^6.1.1",
-    "@types/express": "^5.0.6",
-    "@types/multer": "^2.0.0",
-    "@types/pg": "^8.11.10",
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.11",
-    "typescript": "^5.9.3"
-  },
   "dependencies": {
-    "@neondatabase/serverless": "github:neondatabase/serverless",
-    "@types/axios": "^0.9.36",
-    "@types/jsonwebtoken": "^9.0.10",
+    "@neondatabase/serverless": "^1.0.2",
+    "@types/pg": "^8.16.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "datauri": "^4.1.0",
@@ -34,6 +23,16 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "pg": "^8.13.1"
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
   }
 }
