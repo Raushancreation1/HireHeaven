@@ -20,20 +20,18 @@ export const registerUser = TryCatch(async (req, res, next) => {
     const hashPassword = await bcrypt.hash(password, 10);
     let registeredUser;
     // Normalize and validate role (trim whitespace)
-    const normalizedRole = role.trim().toLowerCase();
+    //const role = role.trim().toLowerCase();
     // Validate role
-    if (normalizedRole !== "recruiter" && normalizedRole !== "jobseeker") {
-        throw new ErrorHandler(400, "Invalid role. Must be 'recruiter' or 'jobseeker'");
-    }
-    if (normalizedRole === "recruiter") {
-        const [user] = await sql `
-            INSERT INTO users (name, email, password, phone_number, role) 
-            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${normalizedRole}) 
-            RETURNING user_id, name, email, phone_number, role, created_at
-        `;
+    // if (role !== "recruiter" && role !== "jobseeker") {
+    //     throw new ErrorHandler(400, "Invalid role. Must be 'recruiter' or 'jobseeker'");
+    // }
+    if (role === "recruiter") {
+        const [user] = await sql `INSERT INTO users (name, email, password, phone_number, role) 
+            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}) 
+            RETURNING user_id, name, email, phone_number, role, created_at`;
         registeredUser = user;
     }
-    else if (normalizedRole === "jobseeker") {
+    else if (role === "jobseeker") {
         const file = req.file;
         if (!file) {
             throw new ErrorHandler(400, "Resume file is required for jobseekers ");
@@ -72,9 +70,8 @@ export const registerUser = TryCatch(async (req, res, next) => {
         }
         const [user] = await sql `
             INSERT INTO users (name, email, password, phone_number, role, bio, resume, resume_public_id) 
-            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${normalizedRole}, ${bio || null}, ${data.url}, ${data.public_id}) 
-            RETURNING user_id, name, email, phone_number, role, bio, resume, created_at
-        `;
+            VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}, ${bio || null}, ${data.url}, ${data.public_id}) 
+            RETURNING user_id, name, email, phone_number, role, bio, resume, created_at`;
         registeredUser = user;
     }
     else {

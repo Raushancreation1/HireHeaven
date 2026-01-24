@@ -1,7 +1,15 @@
 import dotenv from "dotenv";
 import { Pool } from "pg";
+import dns from "node:dns";
 
 dotenv.config();
+
+// Prefer IPv4 first to avoid DNS resolution issues (EAI_AGAIN) in some networks
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  // Node < 18 doesn't support this; ignore
+}
 
 // Prefer an explicit connection string and fail fast if it's missing
 const connectionString =
@@ -25,6 +33,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000, // Increased to 10 seconds
   idleTimeoutMillis: 30000,
   max: 20, // Maximum number of clients in the pool
+  keepAlive: true,
 });
 
 /**

@@ -1,5 +1,5 @@
 import express from "express";
-import cloudianary from 'cloudinary';
+import cloudinary from 'cloudinary';
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.post("/upload", async (req, res) => {
         // Delete old file if public_id is provided
         if (public_id) {
             try {
-                await cloudianary.v2.uploader.destroy(public_id);
+                await cloudinary.v2.uploader.destroy(public_id);
             } catch (destroyError: any) {
                 console.error("Error destroying old file:", destroyError.message);
                 // Continue with upload even if destroy fails
@@ -36,7 +36,7 @@ router.post("/upload", async (req, res) => {
         }
 
         // Upload to Cloudinary
-        const cloud = await cloudianary.v2.uploader.upload(buffer, {
+        const cloud = await cloudinary.v2.uploader.upload(buffer, {
             resource_type: "auto", // Automatically detect file type
         });
 

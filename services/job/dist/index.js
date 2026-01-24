@@ -27,11 +27,13 @@ async function initDB() {
                 name VARCHAR(255) NOT NULL UNIQUE,
                 description TEXT NOT NULL,
                 website VARCHAR(255) NOT NULL,
+                logo VARCHAR(255) NOT NULL,
                 logo_public_id VARCHAR(255) NOT NULL,
                 recruiter_id INTEGER NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         `;
+        await sql `ALTER TABLE companies ADD COLUMN IF NOT EXISTS logo VARCHAR(255);`;
         await sql `
             CREATE TABLE IF NOT EXISTS jobs(
                 job_id SERIAL PRIMARY KEY,
@@ -70,7 +72,8 @@ async function initDB() {
     }
 }
 initDB().then(() => {
-    app.listen(process.env.PORT, () => {
-        console.log(`job service is running on http://localhost:${process.env.PORT}`);
+    const PORT = process.env.PORT ? Number(process.env.PORT) : 3002;
+    app.listen(PORT, () => {
+        console.log(`job service is running on http://localhost:${PORT}`);
     });
 });

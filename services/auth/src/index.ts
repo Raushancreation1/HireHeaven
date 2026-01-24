@@ -5,6 +5,27 @@ import { createClient } from 'redis';
 
 dotenv.config();
 
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const withRetry = async <T>(fn: () => Promise<T>, retries = 5): Promise<T> => {
+    let lastErr: any;
+    for (let i = 1; i <= retries; i++) {
+        try {
+            return await fn();
+        } catch (err: any) {
+            lastErr = err;
+            const code = String(err?.code || '').toUpperCase();
+            if (i < retries && (code === 'EAI_AGAIN' || code === 'ETIMEDOUT' || code === 'ECONNRESET')) {
+                const delay = i * 1000;
+                console.warn(`⚠️  DB init attempt ${i} failed (${code}); retrying in ${delay}ms`);
+                await sleep(delay);
+                continue;
+            }
+            break;
+        }
+    }
+    throw lastErr;
+};
+
 export const redisClient = createClient({
     url: process.env.Redis_url,
     socket: {
@@ -85,7 +106,7 @@ async function initDb() {
 
 }
 
-initDb()
+withRetry(() => initDb(), 5)
     .then(() => {
         const port = Number(process.env.PORT) || 5000;
         
