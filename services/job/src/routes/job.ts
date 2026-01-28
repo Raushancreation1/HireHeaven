@@ -1,16 +1,17 @@
 import express from "express";
 import { isAuth } from "../middleware/auth.js";
 import uploadFile from "../middleware/multer.js";
-import { createCompany, createJob, deleteCompany, getAllActiveJobs, getAllCompany, getCompanyDetails, updatedJob } from "../controllers/job.js";
+import { createCompany, createJob, deleteCompany, getAllActiveJobs, getAllCompany, getCompanyDetails, getSingleJob, updatedJob } from "../controllers/job.js";
 
 const router = express.Router();
 
 router.post("/company/new", isAuth, uploadFile, createCompany)
 router.delete("/company/:companyId", isAuth, deleteCompany);
-router.post("/new", isAuth,createJob);
+router.post("/new", isAuth, createJob);
 router.put("/jobId", isAuth, updatedJob);
 router.get("/company/all", isAuth, getAllCompany);
 router.get("/company/:id", isAuth, getCompanyDetails);
 router.get("/all", getAllActiveJobs);
+router.get("/:jobId", getSingleJob);
 
 export default router;

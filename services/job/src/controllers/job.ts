@@ -178,8 +178,8 @@ export const getCompanyDetails = TryCatch(async (req: AuthenticatedRequest, res)
 
 
 export const getAllActiveJobs = TryCatch(
-    async (req: AuthenticatedRequest, res) => {
-        const {title, location} = req.query as {
+    async (req, res) => {
+        const { title, location } = req.query as {
             title?: string;
             location?: string;
         };
@@ -188,25 +188,33 @@ export const getAllActiveJobs = TryCatch(
 
         const values = [];
 
-        let pramIndex = 1;
+        let paramIndex = 1;
 
 
-        if(title){
-            queryString += `AND j.title ILIKE $${pramIndex}`;
+        if (title) {
+            queryString += ` AND j.title ILIKE $${paramIndex}`;
             values.push(`%${title}%`);
-            pramIndex++;
+            paramIndex++;
         }
 
-        if(location){
-            queryString += `AND j.location ILIKE $${pramIndex}`;
+        if (location) {
+            queryString += `AND j.location ILIKE $${paramIndex}`;
             values.push(`%${location}%`);
-            pramIndex++;
+            paramIndex++;
         }
 
-        queryString += "ORDER BY j.created_at DESC";
+        queryString += " ORDER BY j.created_at DESC";
 
-       const jobs = (await sql.query(queryString, values)) as any[];
+        const jobs = (await sql.query(queryString, values)) as any[];
 
         res.json(jobs);
     }
 );
+
+
+export const getSingleJob = TryCatch(async (req, res) => {
+    const [job] =
+        await sql`SELECT * FROM jobs WHERE job_id = ${req.params.jobId}`;
+
+    res.json(job);
+})
